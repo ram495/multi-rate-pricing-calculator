@@ -28,6 +28,10 @@ export function finalizeDocument(id: number) {
   return apiFetch<Document>(`/documents/${id}/finalize/`, { method: "POST" });
 }
 
+export function duplicateDocument(id: number) {
+  return apiFetch<Document>(`/documents/${id}/duplicate/`, { method: "POST" });
+}
+
 export function createLine(documentId: number, data: LineItemInput) {
   return apiFetch<Document>(`/documents/${documentId}/lines/`, { method: "POST", body: data });
 }

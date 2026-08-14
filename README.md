@@ -135,8 +135,29 @@ This exact scenario is exercised end-to-end in `documents/test_calculations.py::
   called from every mutating endpoint, so the rule can't drift between endpoints.
 - Deleting a document is only allowed while it's a draft — finalized documents are kept
   as an immutable record, same as the line items inside them.
-- **Duplicating a finalized document into a new draft** (stretch goal) is **not
-  implemented** — noted here rather than left silent.
+- Duplicating a finalized document into a new draft is supported — see **Stretch
+  goals** below.
+
+## Stretch goals
+
+All three from the spec are done:
+
+1. **Duplicate a finalized document into a new draft** — `POST
+   /api/documents/<id>/duplicate/` copies the header fields and every line item into a
+   brand-new `draft` document; the source is untouched. Only works on a finalized
+   source (`400` if you try it on a draft — a draft is already editable, so there's
+   nothing to duplicate it for). `documents/test_duplicate.py` covers it (copy is
+   independent/editable, source untouched, draft source rejected).
+2. **Reject finalize if any line has quantity ≤ 0 or negative prices** — satisfied by
+   construction rather than a check at finalize time: `MinValueValidator` on the model
+   fields (`documents/models.py`) makes it impossible to save such a line in the first
+   place, draft or otherwise, so finalize can never encounter one. Locked in by
+   `documents/test_lifecycle.py::TestQuantityAndPriceValidation`.
+3. **Printable view** — `/documents/:id/print` (`frontend/src/pages/DocumentPrint.tsx`),
+   a clean read-only layout with a "Print / Save as PDF" button that uses the browser's
+   native print dialog. `@media print` CSS hides the toolbar/back-link so only the
+   document itself prints. No new backend dependency (no PDF-rendering library) — see
+   "what I'd improve" for the tradeoff.
 
 ## Auth
 
@@ -171,6 +192,7 @@ improve."
 | GET/POST | `/api/documents/` | list / create |
 | GET/PATCH/DELETE | `/api/documents/<id>/` | PATCH/DELETE blocked (409) once finalized |
 | POST | `/api/documents/<id>/finalize/` | |
+| POST | `/api/documents/<id>/duplicate/` | finalized only; copies header + all lines into a new draft (stretch goal) |
 | GET/POST | `/api/documents/<id>/lines/` | |
 | PATCH/DELETE | `/api/documents/<id>/lines/<line_id>/` | blocked (409) once finalized |
 | GET | `/api/reports/summary/?date_from=&date_to=` | count, sum of grand total / tax / discount over `issue_date` range |
@@ -202,8 +224,9 @@ improve."
    currently logout is client-side only; a stolen refresh token stays valid until it expires.
 4. **Optimistic UI / row-level saving** on the line item table instead of a single
    add/edit form — faster to use with many line items.
-5. **Duplicate finalized → draft** and a **printable view**, the two stretch goals not
-   implemented here.
+5. A real **PDF generation** service (e.g. WeasyPrint) instead of relying on the
+   browser's print-to-PDF for the printable view — more control over pagination and
+   layout for longer documents.
 
 ## Security
 
@@ -221,9 +244,8 @@ What's enforced today:
 - Production-only cookie/HSTS hardening (`SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`,
   `SECURE_HSTS_SECONDS`), gated on `DEBUG=False` so local dev over plain HTTP still works.
 
-Known gaps, not fixed here (same list as above): JWT in `localStorage` instead of an
-httpOnly cookie, no token blacklist on logout. This is a take-home-scoped app, not a
-claim that it's fully production-hardened.
+Known gaps (JWT in `localStorage`, no token blacklist) are listed under **What I'd
+improve** below — this is take-home-scoped, not a claim of full production hardening.
 
 ## Deployment
 
@@ -252,35 +274,21 @@ hand. No separate DB provider needed.
    `CORS_ALLOWED_ORIGINS` on the backend — triggers a redeploy.
 6. Open the frontend URL.
 
-### How env vars work here
+No `.env` file exists on Render — values are set in its dashboard (or declared in
+`render.yaml`) and injected as real process env vars, which `settings.py`'s
+`os.environ.get(...)` calls read the same way regardless of source.
 
-There's no `.env` file anywhere in production. Locally, `backend/.env` (gitignored) is
-read by `load_dotenv()` in `settings.py`. On Render there's no such file — values are
-set directly in the dashboard (or declared in `render.yaml`), and Render injects them as
-real process environment variables before the app starts. The same `os.environ.get(...)`
-calls in `settings.py` read them either way; `load_dotenv()` simply no-ops when the file
-doesn't exist, so nothing had to change in the code for this to work.
+### Known limitations (free tier)
 
-### Known limitation: free Postgres expiry
-
-Render's free Postgres plan expires **30 days after creation**, then a 14-day grace
-period before the data is deleted. Fine for a review window, not for staying up
-indefinitely. If this needs to stay live longer: recreate the database (same Blueprint
-link auto-rewires `DATABASE_URL`) or upgrade to Render's paid Postgres tier (~$7/mo).
-
-### Known limitation: cold starts
-
-Both services are on Render's **free** tier, which spins a service down after ~15
-minutes of no traffic. The *first* request after a period of inactivity can take
-**30–60 seconds** to respond while it wakes back up — this shows up as a blank/loading
-screen on first load, not a broken app. Subsequent requests are fast (sub-second) until
-it goes idle again. A paid Render plan removes this; not worth it for a take-home.
+- **Cold starts**: both services sleep after ~15 min idle; the first request after that
+  takes 30–60s to wake up (a blank/loading screen, not a broken app).
+- **Postgres expiry**: the free database expires 30 days after creation (14-day grace
+  period after). Recreate it (same Blueprint auto-rewires `DATABASE_URL`) or upgrade
+  (~$7/mo) if it needs to stay up longer than a review window.
 
 **Live URL**: https://pricing-calculator-frontend-krfc.onrender.com
 (API: https://pricing-calculator-api.onrender.com/api)
 
-Verified end-to-end against the deployed instance, including after the UX pass (navbar
-profile indicator, collapsible new-document form) that shipped after the initial
-deploy: sign up, create a document, add the assignment's 3 sample lines, grand total
-shows $421.50, finalize, confirm an edit attempt is rejected, and the reports page
-reflects the same totals. Screenshots of this flow are above.
+Verified end-to-end against the live instance: sign up, create a document, add the
+assignment's 3 sample lines, grand total shows $421.50, finalize, confirm an edit is
+rejected, reports page matches. Screenshots above.

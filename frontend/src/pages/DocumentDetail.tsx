@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import * as api from "../api/documents";
 import type { Document, DiscountType, LineItem, LineItemInput } from "../api/types";
 import { ApiError } from "../api/client";
@@ -44,6 +44,7 @@ export function DocumentDetail() {
   const [lineForm, setLineForm] = useState<FormState>(emptyForm);
   const [editingLineId, setEditingLineId] = useState<number | null>(null);
   const [savingLine, setSavingLine] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
 
   const load = () => {
     api
@@ -139,6 +140,19 @@ export function DocumentDetail() {
     }
   };
 
+  const handleDuplicate = async () => {
+    setError(null);
+    setDuplicating(true);
+    try {
+      const copy = await api.duplicateDocument(documentId);
+      navigate(`/documents/${copy.id}`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to duplicate document.");
+    } finally {
+      setDuplicating(false);
+    }
+  };
+
   const handleDeleteDocument = async () => {
     if (!confirm("Delete this draft document?")) return;
     setError(null);
@@ -155,6 +169,9 @@ export function DocumentDetail() {
       <div className="detail-header">
         <h1>{doc.title}</h1>
         <span className={`badge badge-${doc.status}`}>{doc.status}</span>
+        <Link to={`/documents/${documentId}/print`} className="print-link">
+          Print / PDF
+        </Link>
       </div>
       {error && <div className="form-error">{error}</div>}
 
@@ -342,7 +359,7 @@ export function DocumentDetail() {
       )}
 
       <div className="detail-actions">
-        {isDraft ? (
+        {isDraft && (
           <>
             <button type="submit" form="document-header-form" disabled={savingHeader}>
               {savingHeader ? "Saving..." : "Save details"}
@@ -355,14 +372,22 @@ export function DocumentDetail() {
             >
               Finalize document
             </button>
-            <button type="button" className="danger" onClick={handleDeleteDocument}>
-              Delete document
-            </button>
           </>
-        ) : (
-          <p className="muted">This document is finalized and can no longer be edited.</p>
+        )}
+        {!isDraft && (
+          <button type="button" onClick={handleDuplicate} disabled={duplicating}>
+            {duplicating ? "Duplicating..." : "Duplicate into new draft"}
+          </button>
+        )}
+        {isDraft && (
+          <button type="button" className="danger" onClick={handleDeleteDocument}>
+            Delete document
+          </button>
         )}
       </div>
+      {!isDraft && (
+        <p className="muted">This document is finalized and can no longer be edited.</p>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     DocumentDetailView,
+    DocumentDuplicateView,
     DocumentFinalizeView,
     DocumentListCreateView,
     LineItemDetailView,
@@ -16,6 +17,11 @@ urlpatterns = [
         "documents/<int:document_id>/finalize/",
         DocumentFinalizeView.as_view(),
         name="document-finalize",
+    ),
+    path(
+        "documents/<int:document_id>/duplicate/",
+        DocumentDuplicateView.as_view(),
+        name="document-duplicate",
     ),
     path(
         "documents/<int:document_id>/lines/",

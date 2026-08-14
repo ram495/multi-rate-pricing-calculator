@@ -69,11 +69,11 @@ export function Reports() {
             <div className="summary-value">{money(summary.sum_grand_total)}</div>
           </div>
           <div className="summary-card">
-            <div className="summary-label">Sum of tax</div>
+            <div className="summary-label">Sum of total tax</div>
             <div className="summary-value">{money(summary.sum_total_tax)}</div>
           </div>
           <div className="summary-card">
-            <div className="summary-label">Sum of discount</div>
+            <div className="summary-label">Sum of total discount</div>
             <div className="summary-value">{money(summary.sum_total_discount)}</div>
           </div>
         </div>

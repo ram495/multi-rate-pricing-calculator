@@ -6,6 +6,7 @@ import { Login } from "./pages/Login";
 import { Signup } from "./pages/Signup";
 import { Documents } from "./pages/Documents";
 import { DocumentDetail } from "./pages/DocumentDetail";
+import { DocumentPrint } from "./pages/DocumentPrint";
 import { Reports } from "./pages/Reports";
 
 function Home() {
@@ -26,6 +27,7 @@ function App() {
             <Route path="/documents/:id" element={<DocumentDetail />} />
             <Route path="/reports" element={<Reports />} />
           </Route>
+          <Route path="/documents/:id/print" element={<DocumentPrint />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -66,6 +66,42 @@ class DocumentFinalizeView(APIView):
         return Response(document_to_dict(document))
 
 
+class DocumentDuplicateView(APIView):
+    """Stretch goal: copy a finalized document into a new draft — header
+    fields and every line item, verbatim. Only finalized documents can be
+    duplicated (per spec) — a draft is already editable, so there's nothing
+    to "get an editable version of". The source document is untouched."""
+
+    def post(self, request, document_id):
+        source = get_object_or_404(Document, pk=document_id, owner=request.user)
+        if source.is_draft:
+            return Response(
+                {"detail": "Only finalized documents can be duplicated."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        new_document = Document.objects.create(
+            owner=request.user,
+            title=f"{source.title} (copy)",
+            customer=source.customer,
+            issue_date=source.issue_date,
+            status=Document.Status.DRAFT,
+        )
+        LineItem.objects.bulk_create(
+            LineItem(
+                document=new_document,
+                description=line.description,
+                quantity=line.quantity,
+                unit_price=line.unit_price,
+                discount_type=line.discount_type,
+                discount_value=line.discount_value,
+                tax_percent=line.tax_percent,
+                sort_order=line.sort_order,
+            )
+            for line in source.lines.all()
+        )
+        return Response(document_to_dict(new_document), status=status.HTTP_201_CREATED)
+
+
 class DocumentScopedMixin:
     """Resolves the parent document (scoped to the current user) for the
     nested line-item endpoints."""
