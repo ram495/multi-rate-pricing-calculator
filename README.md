@@ -34,16 +34,18 @@ Happy path, captured against the live deployment (not local dev):
 backend/
   config/           settings, urls
   accounts/         custom email-based User model, register + JWT endpoints
+    throttles.py     AuthRateThrottle — rate limit on register/login
   documents/
     models.py        Document, LineItem
     calculations.py  pure calc module (no DB/HTTP dependency) — the core of this assignment
-    test_calculations.py
+    exceptions.py     assert_draft() — the single immutability guard every mutating endpoint calls
     serializers.py    validation + document_to_dict() (single source of computed totals)
     views.py          REST endpoints
+    test_calculations.py, test_lifecycle.py, test_duplicate.py, conftest.py
 frontend/
   src/
     api/            fetch client (JWT + refresh), typed API calls
-    pages/          Login, Signup, Documents, DocumentDetail, Reports
+    pages/          Login, Signup, Documents, DocumentDetail, DocumentPrint, Reports
     components/     Layout, ProtectedRoute
 ```
 
