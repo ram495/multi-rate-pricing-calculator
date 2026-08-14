@@ -1,0 +1,22 @@
+# IDE
+.idea/
+.venv/
+
+# Backend
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/migrations/__pycache__/
+backend/db.sqlite3
+backend/.env
+backend/.pytest_cache/
+backend/staticfiles/
+*.pyc
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# OS
+.DS_Store
